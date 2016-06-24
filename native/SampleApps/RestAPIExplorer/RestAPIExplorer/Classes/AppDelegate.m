@@ -36,8 +36,8 @@
 #import <SalesforceSDKCore/SFAuthenticationManager.h>
 
 // Fill these in when creating a new Connected Application on Force.com
-static NSString * const RemoteAccessConsumerKey = @"3MVG9Iu66FKeHhINkB1l7xt7kR8czFcCTUhgoA8Ol2Ltf1eYHOU4SqQRSEitYFDUpqRWcoQ2.dBv_a1Dyu5xa";
-static NSString * const OAuthRedirectURI        = @"testsfdc:///mobilesdk/detect/oauth/done";
+static NSString * const RemoteAccessConsumerKey = @"3MVG9PhR6g6B7ps4Qr_yr.XbWm3vq05yuBWlgkJxwGJ26aqkbvt03gHYXjBtQJuz8MIrjzerA_Ku2i3bY0NyU";
+static NSString * const OAuthRedirectURI        = @"restapiexplorer:///mobilesdk/detect/oauth/done";
 
 @implementation AppDelegate
 
@@ -56,6 +56,7 @@ static NSString * const OAuthRedirectURI        = @"testsfdc:///mobilesdk/detect
         [SalesforceSDKManager sharedManager].connectedAppId = RemoteAccessConsumerKey;
         [SalesforceSDKManager sharedManager].connectedAppCallbackUri = OAuthRedirectURI;
         [SalesforceSDKManager sharedManager].authScopes = @[ @"web", @"api" ];
+        [SFAuthenticationManager sharedManager].advancedAuthConfiguration = SFOAuthAdvancedAuthConfigurationAllow; //allow advanced auth config
         __weak AppDelegate *weakSelf = self;
         [SalesforceSDKManager sharedManager].postLaunchAction = ^(SFSDKLaunchAction launchActionList) {
             //
@@ -122,6 +123,25 @@ static NSString * const OAuthRedirectURI        = @"testsfdc:///mobilesdk/detect
 - (void)application:(UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(NSError *)error
 {
     // Respond to any push notification registration errors here.
+}
+
+
+- (BOOL)application:(UIApplication *)application
+            openURL:(NSURL *)url
+  sourceApplication:(NSString *)sourceApplication
+         annotation:(id)annotation {
+    BOOL canHandleURL = YES;
+    NSString *scheme = [url scheme];
+    
+    // Handle advanced OAuth flow.
+    if ([[SFAuthenticationManager sharedManager] handleAdvancedAuthenticationResponse:url]) {
+    } else {
+        // unknown scheme
+        [self log:SFLogLevelDebug format:@"received unknown URL \"%@\" from %@", url, sourceApplication];
+        canHandleURL = NO;
+    }
+    
+    return canHandleURL;
 }
 
 #pragma mark - Private methods
