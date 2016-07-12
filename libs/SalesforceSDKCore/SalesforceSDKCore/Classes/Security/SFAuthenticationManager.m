@@ -200,12 +200,6 @@ static NSString * const kAlertVersionMismatchErrorKey = @"authAlertVersionMismat
 - (void)presentAuthViewController:(UIWebView *)webView;
 
 /**
- Dismisses the auth view controller, resetting the UI state back to its original
- presentation.
- */
-- (void)dismissAuthViewControllerIfPresent;
-
-/**
  Called after initial authentication has completed.
  @param fromOffline Whether or not the method was called from an offline state.
  */
@@ -1098,11 +1092,19 @@ static Class InstanceClass = nil;
 }
 
 - (void)delegateDidCancelBrowserFlow {
+    __block BOOL handledByDelegate = NO;
     [self enumerateDelegates:^(id<SFAuthenticationManagerDelegate> delegate) {
         if ([delegate respondsToSelector:@selector(authManagerDidCancelBrowserFlow:)]) {
+            handledByDelegate = YES;
             [delegate authManagerDidCancelBrowserFlow:self];
         }
     }];
+    
+    // If no delegates implement authManagerDidCancelBrowserFlow, display Login Host List
+    if (!handledByDelegate) {
+        SFSDKLoginHostListViewController *hostListViewController = [[SFSDKLoginHostListViewController alloc] initWithStyle:UITableViewStylePlain];
+        [[SFRootViewManager sharedManager] pushViewController:hostListViewController];
+    }
 }
 
 #pragma mark - SFUserAccountManagerDelegate
@@ -1224,6 +1226,9 @@ static Class InstanceClass = nil;
     self.authCoordinatorBrowserBlock = callbackBlock;
     NSString *appName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"];;
     NSString *alertMessage = [NSString stringWithFormat:[SFSDKResourceUtils localizedString:@"authAlertBrowserFlowMessage"], coordinator.credentials.domain, appName];
+    if (self.statusAlert) {
+        self.statusAlert = nil;
+    }
     [self showAlertWithTitle:[SFSDKResourceUtils localizedString:@"authAlertBrowserFlowTitle"]
                      message:alertMessage
             firstButtonTitle:[SFSDKResourceUtils localizedString:@"authAlertOkButton"]
