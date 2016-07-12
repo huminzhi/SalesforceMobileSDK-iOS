@@ -1,6 +1,5 @@
 /*
- Copyright (c) 2012, salesforce.com, inc. All rights reserved.
- Author: Todd Stellanova
+ Copyright (c) 2012-2016, salesforce.com, inc. All rights reserved.
  
  Redistribution and use of this software in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
@@ -22,22 +21,44 @@
  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#import <XCTest/XCTest.h>
 
-@class SFTestRunnerPlugin;
+#import "SFSoupSpec.h"
 
-@interface SFPluginTestSuite : XCTestCase {
-    NSString *_jsTestName;
-    NSString *_jsSuiteName;
-    SFTestRunnerPlugin *_testRunnerPlugin;
+NSString * const kSoupSpecSoupName = @"name";
+NSString * const kSoupSpecFeatures = @"features";
+NSString * const kSoupFeatureExternalStorage = @"externalStorage";
+
+@interface SFSoupSpec()
+
+@property (nonatomic, copy, readwrite) NSString *soupName;
+@property (nonatomic, copy, readwrite) NSArray *features;
+
+@end
+
+@implementation SFSoupSpec
+
++ (SFSoupSpec *)newSoupSpec:(NSString *)soupName withFeatures:(NSArray *)features {
+    SFSoupSpec *soupSpec = [[SFSoupSpec alloc] init];
+    soupSpec.soupName = soupName;
+    soupSpec.features = features;
+    return soupSpec;
 }
 
-@property (nonatomic, strong) NSString *jsTestName;
-@property (nonatomic, strong) NSString *jsSuiteName;
++ (SFSoupSpec *)newSoupSpecWithDictionary:(NSDictionary *)dictionary {
+    if (dictionary[kSoupSpecSoupName]) {
+        return [SFSoupSpec newSoupSpec:dictionary[kSoupSpecSoupName]
+                          withFeatures:dictionary[kSoupSpecFeatures]];
+    }
+    return nil;
+}
 
-- (BOOL)waitForTestRunnerReady;
-- (void)runTest:(NSString*)testName inSuite:(NSString*)suiteName;
-- (void)runTest:(NSString*)testName;
-- (BOOL)isTestRunnerReady;
+- (NSDictionary *)asDictionary {
+    NSMutableDictionary *dictionary = [[NSMutableDictionary alloc] init];
+    dictionary[kSoupSpecSoupName] = self.soupName;
+    if (self.features) {
+        dictionary[kSoupSpecFeatures] = self.features;
+    }
+    return dictionary;
+}
 
 @end

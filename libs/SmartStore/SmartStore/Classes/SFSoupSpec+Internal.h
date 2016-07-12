@@ -1,6 +1,5 @@
 /*
- Copyright (c) 2012, salesforce.com, inc. All rights reserved.
- Author: Todd Stellanova
+ Copyright (c) 2012-2016, salesforce.com, inc. All rights reserved.
  
  Redistribution and use of this software in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
@@ -22,22 +21,12 @@
  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#import <XCTest/XCTest.h>
 
-@class SFTestRunnerPlugin;
+#import <Foundation/Foundation.h>
 
-@interface SFPluginTestSuite : XCTestCase {
-    NSString *_jsTestName;
-    NSString *_jsSuiteName;
-    SFTestRunnerPlugin *_testRunnerPlugin;
-}
+static NSInteger const kSoupFeatureEnabled = 1;
+static NSInteger const kSoupFeatureDisabled = 0;
 
-@property (nonatomic, strong) NSString *jsTestName;
-@property (nonatomic, strong) NSString *jsSuiteName;
-
-- (BOOL)waitForTestRunnerReady;
-- (void)runTest:(NSString*)testName inSuite:(NSString*)suiteName;
-- (void)runTest:(NSString*)testName;
-- (BOOL)isTestRunnerReady;
+@interface SFSoupSpec()
 
 @end
