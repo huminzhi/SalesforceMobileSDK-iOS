@@ -419,6 +419,9 @@ static NSInteger const kSSMegaBytePayloadSize = 1024 * 1024;
 
 - (void)testExternalStorageUpsertWithOneMBSizePayloadInRegression {
     NSInteger numberOfIterations = 500;
+    if ([[UIDevice currentDevice].systemVersion floatValue] < 9.3 ) {
+        numberOfIterations = 100;
+    }
     SFSoupSpec *soupSpec = [SFSoupSpec newSoupSpec:kSSExternalStorage_TestSoupName withFeatures:@[kSoupFeatureExternalStorage]];
     NSDictionary* soupIndex = @{@"path": @"name", @"type": @"string"};
     
@@ -434,7 +437,7 @@ static NSInteger const kSSMegaBytePayloadSize = 1024 * 1024;
         NSString *payloadString = [self createRandomPayloadStringOfSize:oneMegaByte];
         
         for (NSUInteger i = 0; i < numberOfIterations; ++i) {
-            if (i%10==0) XCTAssertFalse(i<0, @"Temp solution to work around travis CI no output issue.");
+            if (i%10==0) XCTAssertFalse(i<0, @"Temp solution to work around travis CI no output issue."); //FIXME after move out of travis CI
             // Insert
             NSDictionary *entry = @{@"name": payloadString};
             NSArray *insertedEntries = [store upsertEntries:@[entry] toSoup:kSSExternalStorage_TestSoupName];
