@@ -437,7 +437,6 @@ static NSInteger const kSSMegaBytePayloadSize = 1024 * 1024;
         NSString *payloadString = [self createRandomPayloadStringOfSize:oneMegaByte];
         
         for (NSUInteger i = 0; i < numberOfIterations; ++i) {
-            if (i%10==0) XCTAssertFalse(i<0, @"Temp solution to work around travis CI no output issue."); //FIXME after move out of travis CI
             // Insert
             NSDictionary *entry = @{@"name": payloadString};
             NSArray *insertedEntries = [store upsertEntries:@[entry] toSoup:kSSExternalStorage_TestSoupName];
