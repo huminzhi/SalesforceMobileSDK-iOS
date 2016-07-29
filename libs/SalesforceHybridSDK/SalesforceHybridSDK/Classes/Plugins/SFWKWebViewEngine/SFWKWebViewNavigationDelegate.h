@@ -1,6 +1,10 @@
 /*
- Copyright (c) 2013, salesforce.com, inc. All rights reserved.
- Author: Kevin Hawkins
+ SFWKWebViewNavigationDelegate.h
+ SalesforceHybridSDK
+ 
+ Created by Bharath Hariharan on 7/15/16.
+ 
+ Copyright (c) 2016, salesforce.com, inc. All rights reserved.
  
  Redistribution and use of this software in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
@@ -23,41 +27,13 @@
  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <Foundation/Foundation.h>
+#import <WebKit/WebKit.h>
+#import "SFWKWebViewEngine.h"
 
-@class SFAuthenticationManager;
-@class WKWebView;
+@interface SFWKWebViewNavigationDelegate : NSObject <WKNavigationDelegate>
 
-/**
- Block definition for displaying the auth view.
- */
-typedef void (^SFAuthViewDisplayBlock)(SFAuthenticationManager *, WKWebView *);
+@property (nonatomic, weak) CDVPlugin *enginePlugin;
 
-/**
- Block definition for dismissing the auth view.
- */
-typedef void (^SFAuthViewDismissBlock)(SFAuthenticationManager *);
-
-/**
- Class encompassing the custom actions to take when displaying and dismissing an auth view during the auth process.
- */
-@interface SFAuthenticationViewHandler : NSObject
-
-/**
- The block used to display the auth view.
- */
-@property (nonatomic, copy) SFAuthViewDisplayBlock authViewDisplayBlock;
-
-/**
- The block used to dismiss the auth view.
- */
-@property (nonatomic, copy) SFAuthViewDismissBlock authViewDismissBlock;
-
-/**
- Designated initializer for the class.
- @param displayBlock The block used to display the auth view.
- @param dismissBlock The block used to dismiss the auth view.
- */
-- (id)initWithDisplayBlock:(SFAuthViewDisplayBlock)displayBlock dismissBlock:(SFAuthViewDismissBlock)dismissBlock;
+- (instancetype) initWithEnginePlugin:(CDVPlugin *) enginePlugin;
 
 @end

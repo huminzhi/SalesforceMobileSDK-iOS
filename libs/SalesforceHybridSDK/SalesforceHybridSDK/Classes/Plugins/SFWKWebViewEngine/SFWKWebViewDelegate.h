@@ -1,7 +1,11 @@
 /*
- Copyright (c) 2013, salesforce.com, inc. All rights reserved.
- Author: Kevin Hawkins
- 
+ SFWKWebViewDelegate.h
+ SalesforceHybridSDK
+
+ Created by Bharath Hariharan on 7/15/16.
+
+ Copyright (c) 2016, salesforce.com, inc. All rights reserved.
+
  Redistribution and use of this software in source and binary forms, with or without modification,
  are permitted provided that the following conditions are met:
  * Redistributions of source code must retain the above copyright notice, this list of conditions
@@ -12,7 +16,7 @@
  * Neither the name of salesforce.com, inc. nor the names of its contributors may be used to
  endorse or promote products derived from this software without specific prior written
  permission of salesforce.com, inc.
- 
+
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -23,41 +27,19 @@
  WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <Foundation/Foundation.h>
+#import <WebKit/WebKit.h>
+#import <Cordova/CDVAvailability.h>
 
-@class SFAuthenticationManager;
-@class WKWebView;
+@interface SFWKWebViewDelegate : NSObject <WKNavigationDelegate> {
+    __weak NSObject <WKNavigationDelegate> *_delegate;
+    NSInteger _loadCount;
+    NSInteger _state;
+    NSInteger _curLoadToken;
+    NSInteger _loadStartPollCount;
+}
 
-/**
- Block definition for displaying the auth view.
- */
-typedef void (^SFAuthViewDisplayBlock)(SFAuthenticationManager *, WKWebView *);
+- (id) initWithDelegate:(NSObject<WKNavigationDelegate> *) delegate;
 
-/**
- Block definition for dismissing the auth view.
- */
-typedef void (^SFAuthViewDismissBlock)(SFAuthenticationManager *);
-
-/**
- Class encompassing the custom actions to take when displaying and dismissing an auth view during the auth process.
- */
-@interface SFAuthenticationViewHandler : NSObject
-
-/**
- The block used to display the auth view.
- */
-@property (nonatomic, copy) SFAuthViewDisplayBlock authViewDisplayBlock;
-
-/**
- The block used to dismiss the auth view.
- */
-@property (nonatomic, copy) SFAuthViewDismissBlock authViewDismissBlock;
-
-/**
- Designated initializer for the class.
- @param displayBlock The block used to display the auth view.
- @param dismissBlock The block used to dismiss the auth view.
- */
-- (id)initWithDisplayBlock:(SFAuthViewDisplayBlock)displayBlock dismissBlock:(SFAuthViewDismissBlock)dismissBlock;
+- (BOOL) request:(NSURLRequest *) newRequest isEqualToRequestAfterStrippingFragments:(NSURLRequest *) originalRequest;
 
 @end

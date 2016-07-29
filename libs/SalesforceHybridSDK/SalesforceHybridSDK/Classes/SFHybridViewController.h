@@ -24,6 +24,7 @@
  */
 
 #import <Foundation/Foundation.h>
+#import <WebKit/WebKit.h>
 #import <Cordova/CDVViewController.h>
 #import <SalesforceSDKCore/SFAuthenticationManager.h>
 #import <SalesforceSDKCore/SFOAuthInfo.h>
@@ -55,7 +56,7 @@ typedef void (^SFOAuthPluginAuthSuccessBlock)(SFOAuthInfo *, NSDictionary *);
 /**
  Base view controller for Salesforce hybrid app components.
  */
-@interface SFHybridViewController : CDVViewController
+@interface SFHybridViewController : CDVViewController <WKNavigationDelegate>
 {
     
 }
@@ -91,6 +92,11 @@ typedef void (^SFOAuthPluginAuthSuccessBlock)(SFOAuthInfo *, NSDictionary *);
  @param viewConfig The hybrid view configuration associated with this component.
  */
 - (id)initWithConfig:(SFHybridViewConfig *)viewConfig;
+
+/**
+ * Initializes a new Cordova view with the specified bounds and engine.
+ */
+- (UIView *)newCordovaViewWithFrameAndEngine:(CGRect)bounds webViewEngine:(NSString *)webViewEngine;
 
 /**
  Method used by the OAuth plugin to obtain the current login credentials, or authenticate if no
