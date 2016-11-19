@@ -113,7 +113,7 @@
 {
     [self resetViewState:^{
         [self log:SFLogLevelDebug msg:@"Logout notification received.  Resetting app."];
-        ((SFHybridViewController*)self.viewController).appHomeUrl = nil;
+//        ((SFHybridViewController*)self.viewController).appHomeUrl = nil;
         [self initializeAppViewState];
         
         // Multi-user pattern:
