@@ -53,6 +53,44 @@
     return self;
 }
 
+/*
+ Injects local js files into WKWebView during runtime
+ */
+- (void)loadLocalJS:(WKWebView *)webView filePath:(NSString *)jsFile {
+    NSArray *allFiles = @[@"www/cordova", @"www/cordova_plugins", @"www/plugins/com.salesforce"];
+    if (jsFile) allFiles = [allFiles arrayByAddingObject:jsFile];
+    
+    for (NSString *file in allFiles) {
+        NSString *localFile = [[NSBundle mainBundle] pathForResource:file ofType:@"js"];
+        if (localFile) {
+            NSString *localJS = [NSString stringWithContentsOfFile:localFile
+                                                          encoding:NSUTF8StringEncoding
+                                                             error:nil];
+            if (localJS) {
+                WKUserScript *script = [[WKUserScript alloc] initWithSource:localJS
+                                                              injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES];
+                [webView.configuration.userContentController addUserScript:script];
+            } else {
+                [self log:SFLogLevelError format:@"fail to load local JS: %@", file];
+            }
+        } else {
+            NSArray<NSString *> *files = [[NSBundle mainBundle] pathsForResourcesOfType:@"js" inDirectory:file forLocalization:nil];
+            for(NSString *jsFile in files) {
+                NSString *localJS = [NSString stringWithContentsOfFile:jsFile
+                                                              encoding:NSUTF8StringEncoding
+                                                                 error:nil];
+                if (localJS) {
+                    WKUserScript *script = [[WKUserScript alloc] initWithSource:localJS
+                                                                  injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES];
+                    [webView.configuration.userContentController addUserScript:script];
+                } else {
+                    [self log:SFLogLevelError format:@"fail to load local JS: %@", file];
+                }
+            }
+        }
+    }
+}
+
 - (void) pluginInitialize {
     WKWebView *wkWebView = (WKWebView *) _engineWebView;
     if ([self.viewController conformsToProtocol:@protocol(WKNavigationDelegate)]) {
@@ -63,6 +101,7 @@
         self.wkWebViewDelegate = [[SFWKWebViewDelegate alloc] initWithDelegate:self.navWebViewDelegate];
         wkWebView.navigationDelegate = self.wkWebViewDelegate;
     }
+    [self loadLocalJS:wkWebView filePath:nil];
     [self updateSettings:self.commandDelegate.settings];
 }
 
