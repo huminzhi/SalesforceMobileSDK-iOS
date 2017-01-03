@@ -446,6 +446,14 @@
                BlueprintName = "SmartStoreTests"
                ReferencedContainer = "container:libs/SmartStore/SmartStore.xcodeproj">
             </BuildableReference>
+            <SkippedTests>
+               <Test
+                  Identifier = "SFSmartStoreWithExternalStorageTests/testExternalStorageUpsertWithFiveMBSizePayloadInRegression">
+               </Test>
+               <Test
+                  Identifier = "SFSmartStoreWithExternalStorageTests/testExternalStorageUpsertWithPayloadSizeIncreasedIncrementally">
+               </Test>
+            </SkippedTests>
          </TestableReference>
          <TestableReference
             skipped = "NO">
