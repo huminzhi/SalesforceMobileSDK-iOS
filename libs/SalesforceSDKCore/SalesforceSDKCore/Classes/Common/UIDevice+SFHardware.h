@@ -37,6 +37,8 @@
 #define IPAD_4G_NAMESTRING              @"iPad 4G"
 #define IPAD_AIR_1G_NAMESTRING          @"iPad Air 1G"
 #define IPAD_AIR_2G_NAMESTRING          @"iPad Air 2G"
+#define IPAD_PRO_9_7_INCH_NAMESTRING    @"iPad Pro (9.7 inch)"
+#define IPAD_PRO_12_9_INCH_NAMESTRING   @"iPad Pro (12.9 inch)"
 
 #define IPAD_UNKNOWN_NAMESTRING         @"Unknown iPad"
 
@@ -98,6 +100,9 @@ typedef NS_ENUM(NSUInteger, UIDevicePlatform) {
     UIDevice2GiPadMini,
     UIDevice3GiPadMini,
     
+    UIDevice97InchiPadPro,
+    UIDevice129InchiPadPro,
+    
     UIDeviceAppleTV2,
     UIDeviceAppleTV3,
     UIDeviceAppleTV4,
@@ -151,6 +156,9 @@ typedef NS_ENUM(NSUInteger, UIDeviceFamily) {
 
 /**CPU Count*/
 - (NSUInteger) cpuCount;
+
+/**Total CUP*/
+- (float) totalCPU;
 
 /**Total memory*/
 - (NSUInteger) totalMemory;

@@ -38,10 +38,11 @@
 #import "SFSDKDatasharingHelper.h"
 #import "SFFileProtectionHelper.h"
 #import "NSUserDefaults+SFAdditions.h"
-#import "SalesforceSDKManager.h"
+#import "SFSDKAppFeatureMarkers.h"
 
 // Notifications
 NSString * const SFUserAccountManagerDidChangeCurrentUserNotification   = @"SFUserAccountManagerDidChangeCurrentUserNotification";
+NSString * const SFUserAccountManagerDidFinishUserInitNotification   = @"SFUserAccountManagerDidFinishUserInitNotification";
 
 NSString * const SFUserAccountManagerUserChangeKey      = @"change";
 
@@ -117,6 +118,9 @@ static NSString * const kSFAppFeatureMultiUser   = @"MU";
     dispatch_once(&pred, ^{
 		userAccountManager = [[self alloc] init];
 	});
+    dispatch_once(&pred, ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:SFUserAccountManagerDidFinishUserInitNotification object:nil];
+    });
     return userAccountManager;
 }
 
@@ -643,6 +647,7 @@ static NSString * const kSFAppFeatureMultiUser   = @"MU";
     
     if (account) {
         curUserIdentity = account.accountIdentity;
+        self.previousCommunityId = nil;
     }
     
     if (curUserIdentity){
@@ -971,7 +976,7 @@ static NSString * const kSFAppFeatureMultiUser   = @"MU";
     }
     
     if([[self allUserIdentities] count]>1){
-        [[SalesforceSDKManager sharedManager] registerAppFeature:kSFAppFeatureMultiUser];
+        [SFSDKAppFeatureMarkers registerAppFeature:kSFAppFeatureMultiUser];
     }
     
     // Save it.
@@ -1038,7 +1043,7 @@ static NSString * const kSFAppFeatureMultiUser   = @"MU";
         user.userDeleted = YES;
         [self.userAccountMap removeObjectForKey:user.accountIdentity];
         if([[self allUserIdentities] count]<2){
-            [[SalesforceSDKManager sharedManager] unregisterAppFeature:kSFAppFeatureMultiUser];
+            [SFSDKAppFeatureMarkers unregisterAppFeature:kSFAppFeatureMultiUser];
         }
     }
     return YES;

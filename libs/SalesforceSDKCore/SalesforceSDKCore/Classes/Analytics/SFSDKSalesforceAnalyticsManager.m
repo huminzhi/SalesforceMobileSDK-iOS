@@ -40,6 +40,7 @@
 #import "SFApplicationHelper.h"
 #import <SalesforceAnalytics/SFSDKAILTNTransform.h>
 #import <SalesforceAnalytics/SFSDKDeviceAppAttributes.h>
+#import "SFSDKAppFeatureMarkers.h"
 
 static NSString * const kEventStoresDirectory = @"event_stores";
 static NSString * const kEventStoreEncryptionKeyLabel = @"com.salesforce.eventStore.encryptionKey";
@@ -48,12 +49,21 @@ static NSString * const kSFAppFeatureAiltnEnabled = @"AI";
 
 static NSMutableDictionary *analyticsManagerList = nil;
 
+@interface SFSDKAnalyticsTransformPublisherPair : NSObject
+
+@property (nonnull, nonatomic, readonly, strong) id<SFSDKTransform> transform;
+@property (nonnull, nonatomic, readonly, strong) id<SFSDKAnalyticsPublisher> publisher;
+
+- (instancetype)initWithTransform:(id<SFSDKTransform>)transform publisher:(id<SFSDKAnalyticsPublisher>)publisher;
+
+@end
+
 @interface SFSDKSalesforceAnalyticsManager () <SFAuthenticationManagerDelegate>
 
 @property (nonatomic, readwrite, strong) SFSDKAnalyticsManager *analyticsManager;
 @property (nonatomic, readwrite, strong) SFSDKEventStoreManager *eventStoreManager;
 @property (nonatomic, readwrite, strong) SFUserAccount *userAccount;
-@property (nonatomic, readwrite, strong) NSMutableDictionary *remotes;
+@property (nonatomic, readwrite, strong) NSMutableArray<SFSDKAnalyticsTransformPublisherPair *> *remotes;
 
 @end
 
@@ -72,6 +82,9 @@ static NSMutableDictionary *analyticsManagerList = nil;
             return nil;
         }
         NSString *key = SFKeyForUserAndScope(userAccount, SFUserAccountScopeCommunity);
+        if (!key) {
+            return nil;
+        }
         id analyticsMgr = analyticsManagerList[key];
         if (!analyticsMgr) {
             analyticsMgr = [[SFSDKSalesforceAnalyticsManager alloc] initWithUser:userAccount];
@@ -113,8 +126,9 @@ static NSMutableDictionary *analyticsManagerList = nil;
         };
         self.analyticsManager = [[SFSDKAnalyticsManager alloc] initWithStoreDirectory:rootStoreDir dataEncryptorBlock:dataEncryptorBlock dataDecryptorBlock:dataDecryptorBlock deviceAttributes:deviceAttributes];
         self.eventStoreManager = self.analyticsManager.storeManager;
-        self.remotes = [[NSMutableDictionary alloc] init];
-        self.remotes[(id<NSCopying>) [SFSDKAILTNTransform class]] = [SFSDKAILTNPublisher class];
+        self.remotes = [[NSMutableArray alloc] init];
+        SFSDKAnalyticsTransformPublisherPair *tpp = [[SFSDKAnalyticsTransformPublisherPair alloc] initWithTransform:[[SFSDKAILTNTransform alloc] init] publisher:[[SFSDKAILTNPublisher alloc] init]];
+        [self.remotes addObject:tpp];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(publishOnAppBackground) name:UIApplicationDidEnterBackgroundNotification object:nil];
     }
     return self;
@@ -122,9 +136,9 @@ static NSMutableDictionary *analyticsManagerList = nil;
 
 - (void) setLoggingEnabled:(BOOL) loggingEnabled {
     if (loggingEnabled) {
-        [[SalesforceSDKManager sharedManager] registerAppFeature:kSFAppFeatureAiltnEnabled];
+        [SFSDKAppFeatureMarkers registerAppFeature:kSFAppFeatureAiltnEnabled];
     } else {
-        [[SalesforceSDKManager sharedManager] unregisterAppFeature:kSFAppFeatureAiltnEnabled];
+        [SFSDKAppFeatureMarkers unregisterAppFeature:kSFAppFeatureAiltnEnabled];
     }
     [self storeAnalyticsPolicy:loggingEnabled];
     self.eventStoreManager.loggingEnabled = loggingEnabled;
@@ -164,8 +178,8 @@ static NSMutableDictionary *analyticsManagerList = nil;
         }
         __block BOOL overallSuccess = YES;
         __block BOOL overallCompletionStatus = NO;
-        __block NSMutableArray<Class<SFSDKTransform>> *remoteKeySet = [[self.remotes allKeys] mutableCopy];
-        __block Class<SFSDKTransform> curTransform = [remoteKeySet objectAtIndex:0];
+        NSMutableArray<SFSDKAnalyticsTransformPublisherPair *> *remoteKeySet = [self.remotes mutableCopy];
+        __block SFSDKAnalyticsTransformPublisherPair *currentTpp = remoteKeySet[0];
         PublishCompleteBlock publishCompleteBlock = ^void(BOOL success, NSError *error) {
 
             /*
@@ -179,7 +193,7 @@ static NSMutableDictionary *analyticsManagerList = nil;
 
             // Removes current transform from the list since it's done.
             if (remoteKeySet) {
-                [remoteKeySet removeObject:curTransform];
+                [remoteKeySet removeObject:currentTpp];
             }
 
             // If there are no transforms left, we're done here.
@@ -187,8 +201,8 @@ static NSMutableDictionary *analyticsManagerList = nil;
                 overallCompletionStatus = YES;
             }
             if (!overallCompletionStatus) {
-                curTransform = [remoteKeySet objectAtIndex:0];
-                [self applyTransformAndPublish:curTransform events:events publishCompleteBlock:publishCompleteBlock];
+                currentTpp = remoteKeySet[0];
+                [self applyTransformAndPublish:currentTpp events:events publishCompleteBlock:publishCompleteBlock];
             } else {
 
                 /*
@@ -199,7 +213,7 @@ static NSMutableDictionary *analyticsManagerList = nil;
                 }
             }
         };
-        [self applyTransformAndPublish:curTransform events:events publishCompleteBlock:publishCompleteBlock];
+        [self applyTransformAndPublish:currentTpp events:events publishCompleteBlock:publishCompleteBlock];
     }
 }
 
@@ -214,12 +228,13 @@ static NSMutableDictionary *analyticsManagerList = nil;
     }
 }
 
-- (void) addRemotePublisher:(Class<SFSDKTransform>) transformer publisher:(Class<SFSDKAnalyticsPublisher>) publisher {
+- (void) addRemotePublisher:(id<SFSDKTransform>) transformer publisher:(id<SFSDKAnalyticsPublisher>) publisher {
     if (!transformer || !publisher) {
         [self log:SFLogLevelWarning msg:@"Invalid transformer and/or publisher"];
         return;
     }
-    self.remotes[(id<NSCopying>) transformer] = publisher;
+    SFSDKAnalyticsTransformPublisherPair *tpp = [[SFSDKAnalyticsTransformPublisherPair alloc] initWithTransform:transformer publisher:publisher];
+    [self.remotes addObject:tpp];
 }
 
 - (SFSDKDeviceAppAttributes *) buildDeviceAppAttributes {
@@ -227,7 +242,7 @@ static NSMutableDictionary *analyticsManagerList = nil;
     NSString *prodAppVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"];
     NSString *buildNumber = [[NSBundle mainBundle] infoDictionary][(NSString*)kCFBundleVersionKey];
     NSString *appVersion = [NSString stringWithFormat:@"%@(%@)", prodAppVersion, buildNumber];
-    NSString *appName = [[NSBundle mainBundle] infoDictionary][(NSString *) kCFBundleNameKey];
+    NSString *appName = [SalesforceSDKManager ailtnAppName];
     UIDevice *curDevice = [UIDevice currentDevice];
     NSString *osVersion = [curDevice systemVersion];
     NSString *osName = [curDevice systemName];
@@ -284,18 +299,18 @@ static NSMutableDictionary *analyticsManagerList = nil;
     });
 }
 
-- (void) applyTransformAndPublish:(Class<SFSDKTransform>) curTransform events:(NSArray<SFSDKInstrumentationEvent *> *) events publishCompleteBlock:(PublishCompleteBlock) publishCompleteBlock {
-    if (curTransform) {
-        NSMutableArray<NSDictionary *> *eventsJSONArray = [[NSMutableArray alloc] init];
+- (void) applyTransformAndPublish:(SFSDKAnalyticsTransformPublisherPair *)tpp events:(NSArray<SFSDKInstrumentationEvent *> *) events publishCompleteBlock:(PublishCompleteBlock) publishCompleteBlock {
+    if (tpp) {
+        NSMutableArray *eventsArray = [[NSMutableArray alloc] init];
         for (SFSDKInstrumentationEvent *event in events) {
-            NSDictionary *eventJSON = [curTransform transform:event];
-            if (eventJSON) {
-                [eventsJSONArray addObject:eventJSON];
+            id transformedEvent = [tpp.transform transform:event];
+            if (transformedEvent != nil) {
+                [eventsArray addObject:transformedEvent];
             }
         }
-        Class<SFSDKAnalyticsPublisher> networkPublisher = self.remotes[curTransform];
+        id<SFSDKAnalyticsPublisher> networkPublisher = tpp.publisher;
         if (networkPublisher) {
-            [networkPublisher publish:eventsJSONArray publishCompleteBlock:publishCompleteBlock];
+            [networkPublisher publish:eventsArray publishCompleteBlock:publishCompleteBlock];
         }
     }
 }
@@ -307,6 +322,19 @@ static NSMutableDictionary *analyticsManagerList = nil;
     NSUserDefaults *defs = [NSUserDefaults msdkUserDefaults];
     [defs removeObjectForKey:kAnalyticsOnOffKey];
     [[self class] removeSharedInstanceWithUser:user];
+}
+
+@end
+
+@implementation SFSDKAnalyticsTransformPublisherPair
+
+- (instancetype)initWithTransform:(id<SFSDKTransform>)transform publisher:(id<SFSDKAnalyticsPublisher>)publisher {
+    self = [super init];
+    if (self) {
+        _transform = transform;
+        _publisher = publisher;
+    }
+    return self;
 }
 
 @end

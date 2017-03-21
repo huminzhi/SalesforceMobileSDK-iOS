@@ -30,7 +30,7 @@
 #import <SmartStore/SFSmartStore.h>
 #import <SmartStore/SFQuerySpec.h>
 #import <SalesforceSDKCore/SFJsonUtils.h>
-#import <SalesforceSDKCore/SalesforceSDKManager.h>
+#import <SalesforceSDKCore/SFSDKAppFeatureMarkers.h>
 #import <SalesforceSDKCore/SFSDKEventBuilderHelper.h>
 
 // Page size
@@ -101,7 +101,7 @@ static NSMutableDictionary *syncMgrList = nil;
             syncMgr = [[self alloc] initWithStore:store];
             syncMgrList[key] = syncMgr;
         }
-        [[SalesforceSDKManager sharedManager] registerAppFeature:kSFAppFeatureSmartSync];
+        [SFSDKAppFeatureMarkers registerAppFeature:kSFAppFeatureSmartSync];
         return syncMgr;
     }
 }
@@ -618,7 +618,6 @@ static NSMutableDictionary *syncMgrList = nil;
     SFSyncUpTarget *target = (SFSyncUpTarget *)sync.target;
     NSString* soupName = sync.soupName;
     NSNumber* soupEntryId = record[SOUP_ENTRY_ID];
-    NSArray *fieldList = sync.options.fieldlist;
     
     // Getting type and id
     NSString* objectType = [SFJsonUtils projectIntoJson:record path:kObjectTypeField];
@@ -627,6 +626,20 @@ static NSMutableDictionary *syncMgrList = nil;
     // Fields to save (in the case of create or update)
     NSMutableDictionary* fields = [NSMutableDictionary dictionary];
     if (action == SFSyncUpTargetActionCreate || action == SFSyncUpTargetActionUpdate) {
+        NSArray *fieldList;
+        // During create use options.createFieldlist if specified
+        if (action == SFSyncUpTargetActionCreate && sync.options.createFieldlist) {
+            fieldList = sync.options.createFieldlist;
+        }
+        // During update use options.updateFieldlist if specified
+        else if (action == SFSyncUpTargetActionUpdate && sync.options.updateFieldlist) {
+            fieldList = sync.options.updateFieldlist;
+        }
+        // Otherwise use options.fieldlist
+        else {
+            fieldList = sync.options.fieldlist;
+        }
+
         for (NSString *fieldName in fieldList) {
             if (![fieldName isEqualToString:target.idFieldName] && ![fieldName isEqualToString:target.modificationDateFieldName]) {
                 NSObject* fieldValue = [SFJsonUtils projectIntoJson:record path:fieldName];
@@ -703,7 +716,13 @@ static NSMutableDictionary *syncMgrList = nil;
             [target updateOnServer:objectType objectId:objectId fields:fields completionBlock:completeBlockUpdate failBlock:failBlockUpdate];
             break;
         case SFSyncUpTargetActionDelete:
-            [target deleteOnServer:objectType objectId:objectId completionBlock:completeBlockDelete failBlock:failBlockDelete];
+            // if locally created it can't exist on the server - we don't need to actually do the deleteOnServer call
+            if ([record[kSyncManagerLocallyCreated] boolValue]) {
+                completeBlockDelete(record);
+            }
+            else {
+                [target deleteOnServer:objectType objectId:objectId completionBlock:completeBlockDelete failBlock:failBlockDelete];
+            }
             break;
         default:
             // Action is unsupported here.  Move on.

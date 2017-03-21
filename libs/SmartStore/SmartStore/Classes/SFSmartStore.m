@@ -48,6 +48,7 @@
 #import <SalesforceSDKCore/SFDirectoryManager.h>
 #import <SalesforceSDKCore/SalesforceSDKManager.h>
 #import <SalesforceSDKCore/SFSDKEventBuilderHelper.h>
+#import <SalesforceSDKCore/SFSDKAppFeatureMarkers.h>
 
 static NSMutableDictionary *_allSharedStores;
 static NSMutableDictionary *_allGlobalSharedStores;
@@ -156,10 +157,10 @@ NSString *const EXPLAIN_ROWS = @"rows";
         _user = user;
         if (_isGlobal) {
             _dbMgr = [SFSmartStoreDatabaseManager sharedGlobalManager];
-            [[SalesforceSDKManager sharedManager] registerAppFeature:kSFAppFeatureSmartStoreGlobal];
+            [SFSDKAppFeatureMarkers registerAppFeature:kSFAppFeatureSmartStoreGlobal];
         } else {
             _dbMgr = [SFSmartStoreDatabaseManager sharedManagerForUser:_user];
-            [[SalesforceSDKManager sharedManager] registerAppFeature:kSFAppFeatureSmartStoreUser];
+            [SFSDKAppFeatureMarkers registerAppFeature:kSFAppFeatureSmartStoreUser];
         }
         
         // Setup listening for data protection available / unavailable
@@ -327,9 +328,10 @@ NSString *const EXPLAIN_ROWS = @"rows";
             store = [[self alloc] initWithName:storeName user:user];
             if (store)
                 _allSharedStores[userKey][storeName] = store;
+            
+            NSInteger numUserStores = [(NSDictionary *)(_allSharedStores[userKey]) count];
+            [SFSDKEventBuilderHelper createAndStoreEvent:@"userSmartStoreInit" userAccount:user className:NSStringFromClass([self class]) attributes:@{ @"numUserStores" : [NSNumber numberWithInteger:numUserStores] }];
         }
-        NSInteger numUserStores = [(NSArray *)(_allSharedStores[userKey]) count];
-        [SFSDKEventBuilderHelper createAndStoreEvent:@"userSmartStoreInit" userAccount:user className:NSStringFromClass([self class]) attributes:@{ @"numUserStores" : [NSNumber numberWithInteger:numUserStores] }];
         return store;
     }
 }

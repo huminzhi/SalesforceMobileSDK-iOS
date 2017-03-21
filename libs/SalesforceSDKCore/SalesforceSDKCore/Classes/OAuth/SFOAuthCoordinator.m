@@ -38,7 +38,7 @@
 #import "SFSDKLoginHostStorage.h"
 #import "SFSDKLoginHost.h"
 #import "SFSDKEventBuilderHelper.h"
-#import "SalesforceSDKManager.h"
+#import "SFSDKAppFeatureMarkers.h"
 
 // Public constants
 
@@ -85,7 +85,6 @@ static NSString * const kSFOAuthApprovalCode                    = @"code";
 static NSString * const kSFOAuthGrantTypeAuthorizationCode      = @"authorization_code";
 static NSString * const kSFOAuthResponseTypeActivatedClientCode = @"activated_client_code";
 static NSString * const kSFOAuthResponseClientSecret            = @"client_secret";
-static NSString * const kSFOAuthClientSecretAnonymous           = @"anonymous";
 
 // OAuth Error Descriptions
 // see https://na1.salesforce.com/help/doc/en/remoteaccess_oauth_refresh_token_flow.htm
@@ -307,7 +306,7 @@ static NSString * const kSFAppFeatureSafariBrowserForLogin   = @"BW";
         // Re-trigger the native browser flow if the app becomes active on `SFOAuthAdvancedAuthStateBrowserRequestInitiated` state.
         if (_advancedAuthState == SFOAuthAdvancedAuthStateBrowserRequestInitiated) {
             [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleAppDidBecomeActiveDuringAdvancedAuth:) name:UIApplicationDidBecomeActiveNotification object:nil];
-            [[SalesforceSDKManager sharedManager] registerAppFeature:kSFAppFeatureSafariBrowserForLogin];
+            [SFSDKAppFeatureMarkers registerAppFeature:kSFAppFeatureSafariBrowserForLogin];
         }
         else {
             [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationDidBecomeActiveNotification object:nil];
@@ -683,7 +682,6 @@ static NSString * const kSFAppFeatureSafariBrowserForLogin   = @"BW";
         if (self.authInfo.authType == SFOAuthTypeAdvancedBrowser) {
             [params appendFormat:@"&%@=%@", kSFOAuthCodeVerifierParamName, self.codeVerifier];
             [logString appendFormat:@"&%@=REDACTED", kSFOAuthCodeVerifierParamName];
-            [params appendFormat:@"&%@=%@", kSFOAuthResponseClientSecret, kSFOAuthClientSecretAnonymous];
         }
         
         // Discard the approval code.
@@ -1005,8 +1003,9 @@ static NSString * const kSFAppFeatureSafariBrowserForLogin   = @"BW";
     if ([self isRedirectURL:requestUrl]) {
         [self handleUserAgentResponse:url];
         decisionHandler(WKNavigationActionPolicyCancel);
+    }else {
+        decisionHandler(WKNavigationActionPolicyAllow);
     }
-    decisionHandler(WKNavigationActionPolicyAllow);
 }
 
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationResponse:(WKNavigationResponse *)navigationResponse decisionHandler:(void (^)(WKNavigationResponsePolicy))decisionHandler {

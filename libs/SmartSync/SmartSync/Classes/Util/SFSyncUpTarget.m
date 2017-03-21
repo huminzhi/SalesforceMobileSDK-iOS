@@ -25,7 +25,7 @@
 #import "SFSyncUpTarget.h"
 #import "SFSmartSyncConstants.h"
 #import "SFSmartSyncObjectUtils.h"
-#import "SFSmartSyncSoqlBuilder.h"
+#import <SalesforceSDKCore/SFSDKSoqlBuilder.h>
 #import "SFSmartSyncNetworkUtils.h"
 #import "SFSmartSyncSyncManager.h"
 #import <SalesforceSDKCore/SFRestAPI+Blocks.h>
@@ -58,29 +58,30 @@ static NSString * const kSFSyncUpTargetTypeCustom = @"custom";
 #pragma mark - Serialization and factory methods
 
 + (instancetype)newFromDict:(NSDictionary*)dict {
-    NSString *implClassName;
-    NSString *targetTypeString = (dict[kSFSyncTargetTypeKey] == nil ? kSFSyncUpTargetTypeRestStandard : dict[kSFSyncTargetTypeKey]);
-    switch ([self targetTypeFromString:targetTypeString]) {
-        case SFSyncUpTargetTypeCustom:
-            implClassName = dict[kSFSyncTargetiOSImplKey];
-            if (implClassName.length == 0) {
+    // We should have an implementation class or a target type
+    NSString* implClassName = dict[kSFSyncTargetiOSImplKey];
+    if (implClassName.length > 0) {
+        Class customSyncUpClass = NSClassFromString(implClassName);
+        if (![customSyncUpClass isSubclassOfClass:[SFSyncUpTarget class]]) {
+            [SFLogger log:self level:SFLogLevelError format:@"%@ Class '%@' is not a subclass of %@.", NSStringFromSelector(_cmd), implClassName, NSStringFromClass([SFSyncUpTarget class])];
+            return nil;
+        } else {
+            return [[customSyncUpClass alloc] initWithDict:dict];
+        }        
+    }
+    // No implementation class - using target type
+    else {
+        // No target type - assume kSFSyncUpTargetTypeRestStandard (hybrid apps don't specify it a sync up target type by default)
+        NSString *targetTypeString = (dict[kSFSyncTargetTypeKey] == nil ? kSFSyncUpTargetTypeRestStandard : dict[kSFSyncTargetTypeKey]);
+        switch ([self targetTypeFromString:targetTypeString]) {
+            case SFSyncUpTargetTypeRestStandard:
+                return [[SFSyncUpTarget alloc] initWithDict:dict];
+                
+            case SFSyncUpTargetTypeCustom:
                 [SFLogger log:self level:SFLogLevelError format:@"%@ Custom class name not specified.", NSStringFromSelector(_cmd)];
                 return nil;
-            }
-            Class customSyncUpClass = NSClassFromString(implClassName);
-            if (![customSyncUpClass isSubclassOfClass:[SFSyncUpTarget class]]) {
-                [SFLogger log:self level:SFLogLevelError format:@"%@ Class '%@' is not a subclass of %@.", NSStringFromSelector(_cmd), implClassName, NSStringFromClass([SFSyncUpTarget class])];
-                return nil;
-            } else {
-                return [[customSyncUpClass alloc] initWithDict:dict];
-            }
-        case SFSyncUpTargetTypeRestStandard:
-        default:  // SFSyncUpTarget is the default, if not specified.
-            return [[SFSyncUpTarget alloc] initWithDict:dict];
+        }
     }
-    
-    // Fell through
-    return nil;
 }
 
 - (NSMutableDictionary *)asDict {
@@ -92,7 +93,9 @@ static NSString * const kSFSyncUpTargetTypeCustom = @"custom";
 + (SFSyncUpTargetType)targetTypeFromString:(NSString *)targetType {
     if ([targetType isEqualToString:kSFSyncUpTargetTypeRestStandard]) {
         return SFSyncUpTargetTypeRestStandard;
-    } else {
+    }
+    // Must be custom
+    else {
         return SFSyncUpTargetTypeCustom;
     }
 }
@@ -101,7 +104,6 @@ static NSString * const kSFSyncUpTargetTypeCustom = @"custom";
     switch (targetType) {
         case SFSyncUpTargetTypeRestStandard:  return kSFSyncUpTargetTypeRestStandard;
         case SFSyncUpTargetTypeCustom: return kSFSyncUpTargetTypeCustom;
-        default: return nil;
     }
 }
 
@@ -115,7 +117,7 @@ static NSString * const kSFSyncUpTargetTypeCustom = @"custom";
     NSDate *localLastModifiedDate = [SFSmartSyncObjectUtils getDateFromIsoDateString:record[self.modificationDateFieldName]];
     __block NSDate *serverLastModifiedDate = nil;
     
-    SFSmartSyncSoqlBuilder *soqlBuilder = [SFSmartSyncSoqlBuilder withFields:self.modificationDateFieldName];
+    SFSDKSoqlBuilder *soqlBuilder = [SFSDKSoqlBuilder withFields:self.modificationDateFieldName];
     [soqlBuilder from:objectType];
     [soqlBuilder whereClause:[NSString stringWithFormat:@"%@ = '%@'", self.idFieldName, objectId]];
     NSString *query = [soqlBuilder build];
