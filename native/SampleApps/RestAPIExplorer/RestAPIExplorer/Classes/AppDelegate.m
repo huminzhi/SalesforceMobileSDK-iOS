@@ -104,6 +104,10 @@ static NSString * const OAuthRedirectURI        = @"testsfdc:///mobilesdk/detect
             NSString *queryString = [urlString substringFromIndex:queryStringRange.location + 1];
             NSDictionary *queryStringComponents = [queryString queryStringComponents];
             jwt = queryStringComponents[@"token"];
+            NSString *audUrl = queryStringComponents[@"audUrl"];
+            if (audUrl!= nil) {
+                [[SFUserAccountManager sharedInstance] setLoginHost:audUrl];
+            }
         }
         if (jwt) {
             [self startAuthentication:jwt];
